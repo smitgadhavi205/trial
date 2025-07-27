@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodePractical Pro - AI Document Processing</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .panel-title {
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            color: #5a67d8;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .upload-area {
+            border: 3px dashed #cbd5e0;
+            border-radius: 15px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 20px;
+            position: relative;
+            background: linear-gradient(45deg, #f8f9ff, #fff);
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #5a67d8;
+            background: linear-gradient(45deg, #eef2ff, #f8f9ff);
+            transform: translateY(-2px);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #9ca3af;
+            margin-bottom: 15px;
+        }
+
+        .upload-area.dragover .upload-icon {
+            color: #5a67d8;
+            animation: bounce 0.6s ease-in-out;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 60%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            80% { transform: translateY(-5px); }
+        }
+
+        .upload-text {
+            font-size: 1.1rem;
+            color: #6b7280;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            font-size: 0.9rem;
+            color: #9ca3af;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border-left: 4px solid #10b981;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .file-size {
+            font-size: 0.8rem;
+            color: #6b7280;
+        }
+
+        .remove-file {
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .process-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+            margin-top: 15px;
+        }
+
+        .process-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
+        }
+
+        .process-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .processing-indicator {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #5a67d8;
+        }
+
+        .spinner {
+            border: 3px solid #e2e8f0;
+            border-top: 3px solid #5a67d8;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results-container {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .practical-match {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border: 2px solid #0ea5e9;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .practical-match:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(14, 165, 233, 0.2);
+        }
+
+        .match-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .practical-number {
+            background: #0ea5e9;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .confidence-score {
+            background: #10b981;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            margin-left: auto;
+        }
+
+        .aim-preview {
+            font-style: italic;
+            color: #374151;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+
+        .code-preview {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 150px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .format-controls {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8f9ff, #fff);
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .format-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .format-group label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+            color: #6b7280;
+            font-weight: 600;
+        }
+
+        .format-group select, .format-group input {
+            padding: 8px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 13px;
+            transition: border-color 0.3s ease;
+        }
+
+        .format-group select:focus, .format-group input:focus {
+            outline: none;
+            border-color: #5a67d8;
+        }
+
+        .output-panel {
+            grid-column: span 3;
+            min-height: 500px;
+        }
+
+        .output-preview {
+            border: 2px solid #e2e8f0;
+            border-radius: 15px;
+            background: white;
+            min-height: 450px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .output-content {
+            padding: 40px;
+            font-family: 'Times New Roman', serif;
+            line-height: 1.8;
+        }
+
+        .practical-header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #333;
+            padding-bottom: 20px;
+        }
+
+        .practical-title {
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .practical-aim {
+            margin-bottom: 25px;
+            text-align: left;
+        }
+
+        .code-section {
+            margin-bottom: 25px;
+        }
+
+        .language-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .code-block {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            margin: 15px 0;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .output-section {
+            margin-top: 25px;
+        }
+
+        .download-options {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .download-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .download-btn:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+
+        .stats-panel {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+            backdrop-filter: blur(10px);
+            color: white;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #6b7280;
+            padding: 60px 20px;
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .output-panel {
+                grid-column: span 2;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            .output-panel {
+                grid-column: span 1;
+            }
+            .format-controls {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 CodePractical Pro</h1>
+            <p>AI-Powered Document Processing & Smart Code Matching</p>
+        </div>
+
+        <div class="main-grid">
+            <!-- Aims Upload Panel -->
+            <div class="panel">
+                <h2 class="panel-title">📋 Upload Aims Document</h2>
+                <div class="upload-area" onclick="document.getElementById('aimsFile').click()" ondrop="handleDrop(event, 'aims')" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                    <div class="upload-icon">📄</div>
+                    <div class="upload-text">Drop your aims document here</div>
+                    <div class="upload-hint">PDF or Word document with all practical aims</div>
+                </div>
+                <input type="file" id="aimsFile" class="file-input" accept=".pdf,.doc,.docx" onchange="handleFileSelect(event, 'aims')">
+                <div id="aimsFileList" class="file-list"></div>
+                <button class="process-btn" id="processAims" onclick="processAimsDocument()" disabled>🔍 Extract Aims</button>
+                <div id="aimsProcessing" class="processing-indicator">
+                    <div class="spinner"></div>
+                    Processing aims document...
+                </div>
+                <div id="aimsResults" class="results-container"></div>
+            </div>
+
+            <!-- Code Upload Panel -->
+            <div class="panel">
+                <h2 class="panel-title">💻 Upload Code Document</h2>
+                <div class="upload-area" onclick="document.getElementById('codeFile').click()" ondrop="handleDrop(event, 'code')" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                    <div class="upload-icon">⚡</div>
+                    <div class="upload-text">Drop your code document here</div>
+                    <div class="upload-hint">PDF or Word document with all code snippets</div>
+                </div>
+                <input type="file" id="codeFile" class="file-input" accept=".pdf,.doc,.docx" onchange="handleFileSelect(event, 'code')">
+                <div id="codeFileList" class="file-list"></div>
+                <button class="process-btn" id="processCode" onclick="processCodeDocument()" disabled>⚙️ Extract Code</button>
+                <div id="codeProcessing" class="processing-indicator">
+                    <div class="spinner"></div>
+                    Processing code document...
+                </div>
+                <div id="codeResults" class="results-container"></div>
+            </div>
+
+            <!-- Format Template Panel -->
+            <div class="panel">
+                <h2 class="panel-title">🎨 Upload Format Template</h2>
+                <div class="upload-area" onclick="document.getElementById('templateFile').click()" ondrop="handleDrop(event, 'template')" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                    <div class="upload-icon">📐</div>
+                    <div class="upload-text">Drop format template here</div>
+                    <div class="upload-hint">PDF or Word with desired formatting style</div>
+                </div>
+                <input type="file" id="templateFile" class="file-input" accept=".pdf,.doc,.docx" onchange="handleFileSelect(event, 'template')">
+                <div id="templateFileList" class="file-list"></div>
+                
+                <div class="format-controls">
+                    <div class="format-group">
+                        <label>Title Font</label>
+                        <select id="titleFont">
+                            <option value="Times New Roman" selected>Times New Roman</option>
+                            <option value="Arial">Arial</option>
+                            <option value="Calibri">Calibri</option>
+                            <option value="Georgia">Georgia</option>
+                        </select>
+                    </div>
+                    <div class="format-group">
+                        <label>Title Size</label>
+                        <input type="number" id="titleSize" value="18" min="12" max="28">
+                    </div>
+                    <div class="format-group">
+                        <label>Content Font</label>
+                        <select id="contentFont">
+                            <option value="Times New Roman" selected>Times New Roman</option>
+                            <option value="Arial">Arial</option>
+                            <option value="Calibri">Calibri</option>
+                        </select>
+                    </div>
+                    <div class="format-group">
+                        <label>Content Size</label>
+                        <input type="number" id="contentSize" value="14" min="10" max="20">
+                    </div>
+                    <div class="format-group">
+                        <label>Code Font</label>
+                        <select id="codeFont">
+                            <option value="Courier New" selected>Courier New</option>
+                            <option value="Monaco">Monaco</option>
+                            <option value="Consolas">Consolas</option>
+                        </select>
+                    </div>
+                    <div class="format-group">
+                        <label>Code Size</label>
+                        <input type="number" id="codeSize" value="12" min="8" max="16">
+                    </div>
+                </div>
+
+                <button class="process-btn" onclick="matchAndGenerate()" id="generateBtn" disabled>🎯 Smart Match & Generate</button>
+            </div>
+
+            <!-- Output Panel -->
+            <div class="panel output-panel">
+                <h2 class="panel-title">📊 Generated Practical Reports</h2>
+                <div class="output-preview">
+                    <div class="download-options">
+                        <button class="download-btn" onclick="downloadAllPDF()">📥 Download All PDF</button>
+                        <button class="download-btn" onclick="downloadAllWord()">📄 Download All Word</button>
+                    </div>
+                    <div id="outputContent" class="output-content">
+                        <div class="empty-state">
+                            <div class="empty-icon">🎯</div>
+                            <h3>AI-Powered Smart Matching</h3>
+                            <p>Upload your aims and code documents to automatically match and generate formatted practical reports</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-panel">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="extractedAims">0</div>
+                    <div class="stat-label">Aims Extracted</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="extractedCode">0</div>
+                    <div class="stat-label">Code Blocks Found</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="matchedPracticals">0</div>
+                    <div class="stat-label">Practicals Matched</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="accuracyScore">0%</div>
+                    <div class="stat-label">Matching Accuracy</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global storage for extracted data
+        let extractedAims = [];
+        let extractedCode = [];
+        let matchedPracticals = [];
+
+        // File handling functions
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('dragover');
+        }
+
+        function handleDrop(e, type) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileUpload(files[0], type);
+            }
+        }
+
+        function handleFileSelect(e, type) {
+            const file = e.target.files[0];
+            if (file) {
+                handleFileUpload(file, type);
+            }
+        }
+
+        function handleFileUpload(file, type) {
+            const fileList = document.getElementById(`${type}FileList`);
+            const processBtn = document.getElementById(type === 'aims' ? 'processAims' : 'processCode');
+            
+            // Clear previous files
+            fileList.innerHTML = '';
+            
+            // Create file item
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.innerHTML = `
+                <div>
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-size">${(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                </div>
+                <button class="remove-file" onclick="removeFile('${type}')">&times;</button>
+            `;
+            
+            fileList.appendChild(fileItem);
+            processBtn.disabled = false;
+            
+            // Store file for processing
+            window[`${type}File`] = file;
+        }
+
+        function removeFile(type) {
+            document.getElementById(`${type}FileList`).innerHTML = '';
+            document.getElementById(type === 'aims' ? 'processAims' : 'processCode').disabled = true;
+            window[`${type}File`] = null;
+        }
+
+        // Document processing functions
+        async function processAimsDocument() {
+            const file = window.aimsFile;
+            if (!file) return;
+
+            const processing = document.getElementById('aimsProcessing');
+            const results = document.getElementById('aimsResults');
+            
+            processing.style.display = 'block';
+            results.innerHTML = '';
+
+            try {
+                let text = '';
+                if (file.type.includes('pdf')) {
+                    text = await extractTextFromPDF(file);
+                } else {
+                    text = await extractTextFromWord(file);
+                }
+
+                const aims = extractAimsFromText(text);
+                extractedAims = aims;
+                
+                displayAims(aims);
+                updateStats();
+                
+            } catch (error) {
+                results.innerHTML = `<div style="color: #ef4444; padding: 20px;">Error processing file: ${error.message}</div>`;
+            } finally {
+                processing.style.display = 'none';
+            }
+        }
+
+        async function processCodeDocument() {
+            const file = window.codeFile;
+            if (!file) return;
+
+            const processing = document.getElementById('codeProcessing');
+            const results = document.getElementById('codeResults');
+            
+            processing.style.display = 'block';
+            results.innerHTML = '';
+
+            try {
+                let text = '';
+                if (file.type.includes('pdf')) {
+                    text = await extractTextFromPDF(file);
+                } else {
+                    text = await extractTextFromWord(file);
+                }
+
+                const code = extractCodeFromText(text);
+                extractedCode = code;
+                
+                displayCode(code);
+                updateStats();
+                
+            } catch (error) {
+                results.innerHTML = `<div style="color: #ef4444; padding: 20px;">Error processing file: ${error.message}</div>`;
+            } finally {
+                processing.style.display = 'none';
+            }
+        }
+
+        // Text extraction functions
+        async function extractTextFromWord(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    mammoth.extractRawText({arrayBuffer: e.target.result})
+                        .then(result => resolve(result.value))
+                        .catch(reject);
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        async function extractTextFromPDF(file) {
+            // Simplified PDF text extraction (in real implementation, you'd use a proper PDF library)
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    // This is a simplified version - real PDF extraction would be more complex
+                    const text = new TextDecoder().decode(e.target.result);
+                    resolve(text);
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+        const languagePatterns = {
+            'python': [/def\s+\w+\(/, /import\s+\w+/, /print\s*\(/, /if\s+__name__\s*==\s*['"]+__main__['"]+/, /:\s*$/m, /^\s*#/m],
+            'java': [/public\s+class\s+\w+/, /public\s+static\s+void\s+main/, /System\.out\.print/, /import\s+java\./, /\/\*[\s\S]*?\*\//, /\/\//],
+            'cpp': [/#include\s*<.*>/, /using\s+namespace\s+std/, /cout\s*<</, /cin\s*>>/, /int\s+main\s*\(/, /\/\*[\s\S]*?\*\//, /\/\//],
+            'c': [/#include\s*<.*>/, /printf\s*\(/, /scanf\s*\(/, /int\s+main\s*\(/, /\/\*[\s\S]*?\*\//, /\/\//],
+            'javascript': [/function\s+\w+\(/, /console\.log\s*\(/, /var\s+\w+\s*=/, /let\s+\w+\s*=/, /const\s+\w+\s*=/, /\/\*[\s\S]*?\*\//, /\/\//],
+            'html': [/<html.*>/, /<head.*>/, /<body.*>/, /<div.*>/, /<script.*>/, /<!DOCTYPE/],
+            'css': [/\w+\s*{/, /:\s*\w+;/, /@media/, /\.[\w-]+\s*{/, /#[\w-]+\s*{/]
+        };
+
+        // Sample outputs for different languages
+        const sampleOutputs = {
+            'python': 'Python program executed successfully.\nResult: Operation completed\nOutput generated',
+            'java': 'Java program compiled and executed.\nCompilation successful\nExecution completed',
+            'cpp': 'C++ program compiled and executed.\nBuild successful\nProgram terminated normally',
+            'c': 'C program compiled and executed.\nCompilation successful\nExecution completed',
+            'javascript': 'JavaScript executed successfully.\nDOM manipulation completed\nEvent handlers attached',
+            'html': 'HTML page rendered successfully.\nAll elements loaded\nPage ready',
+            'css': 'CSS styles applied successfully.\nLayout rendered\nResponsive design active'
+        };
+
+        // File handling functions
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('dragover');
+        }
+
+        function handleDrop(e, type) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileUpload(files[0], type);
+            }
+        }
+
+        function handleFileSelect(e, type) {
+            const file = e.target.files[0];
+            if (file) {
+                handleFileUpload(file, type);
+            }
+        }
+
+        function handleFileUpload(file, type) {
+            const fileList = document.getElementById(`${type}FileList`);
+            const processBtn = document.getElementById(type === 'aims' ? 'processAims' : 'processCode');
+            
+            // Clear previous files
+            fileList.innerHTML = '';
+            
+            // Create file item
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.innerHTML = `
+                <div>
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-size">${(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                </div>
+                <button class="remove-file" onclick="removeFile('${type}')">&times;</button>
+            `;
+            
+            fileList.appendChild(fileItem);
+            processBtn.disabled = false;
+            
+            // Store file for processing
+            window[`${type}File`] = file;
+        }
+
+        function removeFile(type) {
+            document.getElementById(`${type}FileList`).innerHTML = '';
+            document.getElementById(type === 'aims' ? 'processAims' : 'processCode').disabled = true;
+            window[`${type}File`] = null;
+        }
+
+        // Document processing functions
+        async function processAimsDocument() {
+            const file = window.aimsFile;
+            if (!file) return;
+
+            const processing = document.getElementById('aimsProcessing');
+            const results = document.getElementById('aimsResults');
+            
+            processing.style.display = 'block';
+            results.innerHTML = '';
+
+            try {
+                let text = '';
+                if (file.type.includes('pdf')) {
+                    text = await extractTextFromPDF(file);
+                } else {
+                    text = await extractTextFromWord(file);
+                }
+
+                const aims = extractAimsFromText(text);
+                extractedAims = aims;
+                
+                displayAims(aims);
+                updateStats();
+                
+            } catch (error) {
+                results.innerHTML = `<div style="color: #ef4444; padding: 20px;">Error processing file: ${error.message}</div>`;
+            } finally {
+                processing.style.display = 'none';
+            }
+        }
+
+        async function processCodeDocument() {
+            const file = window.codeFile;
+            if (!file) return;
+
+            const processing = document.getElementById('codeProcessing');
+            const results = document.getElementById('codeResults');
+            
+            processing.style.display = 'block';
+            results.innerHTML = '';
+
+            try {
+                let text = '';
+                if (file.type.includes('pdf')) {
+                    text = await extractTextFromPDF(file);
+                } else {
+                    text = await extractTextFromWord(file);
+                }
+
+                const code = extractCodeFromText(text);
+                extractedCode = code;
+                
+                displayCode(code);
+                updateStats();
+                
+            } catch (error) {
+                results.innerHTML = `<div style="color: #ef4444; padding: 20px;">Error processing file: ${error.message}</div>`;
+            } finally {
+                processing.style.display = 'none';
+            }
+        }
+
+        // Text extraction functions
+        async function extractTextFromWord(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    mammoth.extractRawText({arrayBuffer: e.target.result})
+                        .then(result => resolve(result.value))
+                        .catch(reject);
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        async function extractTextFromPDF(file) {
+            // Simplified PDF text extraction (in real implementation, you'd use a proper PDF library)
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    // This is a simplified version - real PDF extraction would be more complex
+                    const text = new TextDecoder().decode(e.target.result);
+                    resolve(text);
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // Content extraction functions
+        function extractAimsFromText(text) {
+            const aims = [];
+            const lines = text.split('\n');
+            let currentAim = '';
+            let practicalNumber = 1;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                // Look for aim indicators
+                if (line.toLowerCase().includes('aim') || 
+                    line.toLowerCase().includes('objective') || 
+                    line.toLowerCase().includes('practical')) {
+                    
+                    if (currentAim) {
+                        aims.push({
+                            id: practicalNumber++,
+                            text: currentAim.trim(),
+                            keywords: extractKeywords(currentAim)
+                        });
+                        currentAim = '';
+                    }
+                    
+                    currentAim = line;
+                } else if (currentAim && line) {
+                    currentAim += ' ' + line;
+                } else if (currentAim && !line) {
+                    aims.push({
+                        id: practicalNumber++,
+                        text: currentAim.trim(),
+                        keywords: extractKeywords(currentAim)
+                    });
+                    currentAim = '';
+                }
+            }
+
+            if (currentAim) {
+                aims.push({
+                    id: practicalNumber,
+                    text: currentAim.trim(),
+                    keywords: extract
