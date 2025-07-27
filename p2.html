@@ -974,4 +974,9 @@
                 aims.push({
                     id: practicalNumber,
                     text: currentAim.trim(),
-                    keywords: extract
+                    keywords: extractKeywords(currentAim)
+                });
+            }
+
+            return aims;
+        }
